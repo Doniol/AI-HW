@@ -1,6 +1,9 @@
 import numpy as np
 from typing import List, Tuple
 import math
+import random
+
+random.seed(0)
 
 
 def load_data(file: str= "dataset1.csv", year: str="2000")-> Tuple[List[np.ndarray], List[np.ndarray], List[str]]:
@@ -61,14 +64,13 @@ def normalize(dataset_to_be_changed: np.ndarray, min_values: List[int], max_valu
             day[data_type] = (day[data_type] - min_values[data_type]) / (max_values[data_type] - min_values[data_type])
 
 
-def pinpoint_season(given_day: np.ndarray, data: np.ndarray, labels: List[str], k:int = 1) -> str:
-    ''' Calculates the most logical season for the given day
+def calculate_distance(given_day: np.ndarray, data: np.ndarray, labels: List[str]):
+    ''' This function calculates the distance from the to test day to it's neighbours
 
     given_day: The day, and its' data, for which a season has to be calculated
     data: A list of all available data about other days that are already in the system
     labels: A list of all labels corresponding to the data entries at the same index
-    k: The amount of nearest data-points that are to be used to determine the correct season for the given_day
-    return: The calculated season for the given_day
+    return: A list with tuples which contain the distances to the neigbours with the corresponding season
     '''
     distance_to_neighbour = []
     # Loop through all days in dataset
@@ -81,8 +83,19 @@ def pinpoint_season(given_day: np.ndarray, data: np.ndarray, labels: List[str], 
             else:
                 distance_neighbour += data[data_index][data_type_index] - given_day[data_type_index]
         distance_to_neighbour.append((distance_neighbour, labels[data_index]))
+
     # Sort the neighbours by distance then use the top k neigbours for season calculation
     distance_to_neighbour.sort()
+    return distance_to_neighbour
+    
+
+def pinpoint_season(distance_to_neighbour: List[Tuple[int, str]], k: int = 1) -> str:
+    ''' Calculates the most logical season for the given day
+
+    k: The amount of nearest data-points that are to be used to determine the correct season for the given_day
+    distance_to_neigbour: A list with tuples which contain the distances to the neigbours with the corresponding season
+    return: The calculated season for the given_day
+    '''
     selected_neighbours = distance_to_neighbour[0:k]
     season_dict = {
         "winter": 0,
@@ -93,7 +106,12 @@ def pinpoint_season(given_day: np.ndarray, data: np.ndarray, labels: List[str], 
     for neighbour in selected_neighbours:
         season_dict[neighbour[1]] += 1
     
-    return max(season_dict, key=season_dict.get)
+    chosen_season = max(season_dict, key=season_dict.get)
+    # Check whether there are ties between the season counts in season_dict
+    for key in season_dict:
+        if key != chosen_season and season_dict[chosen_season] == season_dict[key]:
+            return pinpoint_season(selected_neighbours, k - 1)
+    return chosen_season
 
 
 def success_rate_calculation(results: List[str], answers: List[str]) -> float:
@@ -126,18 +144,21 @@ def calculate_optimal_k(test_days: List[np.ndarray], test_labels: List[str], ori
     k_max: The maximum amount of neighbours(k) you want to test
     return: The best tested k-value and the associated success rate
     '''
+    # Make sure that the k-value doesn't exceed the amount of available data-points
     if k_max > len(original_data):
         k_max = original_data
     if k_min < 1:
         k_min = 1
 
+    # Calculate the success rate for each k-value and return the best one
     success_rate = 0
     optimal_k_value = 0
     for k_value in range(k_min, k_max):
         print(k_value)
         predicted_seasons = []
         for day in test_days:
-            predicted_seasons.append(pinpoint_season(day, original_data, original_labels, k_value))
+            calculated_distances = calculate_distance(day, original_data, original_labels)
+            predicted_seasons.append(pinpoint_season(calculated_distances, k_value))
         calculated_success_rate = success_rate_calculation(predicted_seasons, test_labels)
         if calculated_success_rate > success_rate:
             success_rate = calculated_success_rate
@@ -162,13 +183,13 @@ def main() -> None:
     # Predict seasons of given days
     # predicted_seasons = []
     # for day in test_days:
-    #     predicted_seasons.append(pinpoint_season(day, original_data, original_labels, 10))
+    #     calculated_distance = calculate_distance(day, original_data, original_labels)
+    #     predicted_seasons.append(pinpoint_season(calculated_distance, 1))
 
     # Print either the success rate of the validated days
     # print(success_rate_calculation(predicted_seasons, test_labels))
-    # or the results from the test days
+    # Or the results from the test days
     # print(predicted_seasons)
-
     # Or calculate optimal k-value
     print(calculate_optimal_k(test_days, test_labels, original_data, original_labels, 1, 100))
 
