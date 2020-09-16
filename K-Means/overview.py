@@ -2,6 +2,8 @@ import numpy as np
 from typing import List, Tuple
 import math
 import random
+import copy
+import time
 
 random.seed(0)
 
@@ -14,6 +16,7 @@ def load_data(file: str= "dataset1.csv", year: str="2000")-> Tuple[List[np.ndarr
     return: A ndarray with the data, a ndarray with the dates and a regular list with the seasonal labels for said days
     '''
 
+
 def find_min_max(original_dataset: np.ndarray) -> List[List[float]]:
     ''' This function determines the lowest and highest value of each of the different data types, this will be used to normalize the data
 
@@ -21,6 +24,7 @@ def find_min_max(original_dataset: np.ndarray) -> List[List[float]]:
     return: A list containing the lists for both the lowest values of the dataset and a list with highest values of the dataset for each data type 
     '''
 
+    
 def normalize(dataset_to_be_changed: np.ndarray, min_values: List[int], max_values: List[int]):
     ''' This function normalizes the given dataset
     
@@ -29,71 +33,130 @@ def normalize(dataset_to_be_changed: np.ndarray, min_values: List[int], max_valu
     max_values: A list containing the highest values for the different data types
     '''
 
-def calculate_distance(given_day: np.ndarray, data: np.ndarray, labels: List[str]):
-    ''' This function calculates the distance from the to test day to it's neighbours
-
-    given_day: The day, and its' data, for which a season has to be calculated
-    data: A list of all available data about other days that are already in the system
-    labels: A list of all labels corresponding to the data entries at the same index
-    return: A list with tuples which contain the distances to the neigbours with the corresponding season
-    '''
-    
-def pinpoint_season(distance_to_neighbour: List[Tuple[int, str]], k: int = 1) -> str:
-    ''' Calculates the most logical season for the given day
-
-    k: The amount of nearest data-points that are to be used to determine the correct season for the given_day
-    distance_to_neigbour: A list with tuples which contain the distances to the neigbours with the corresponding season
-    return: The calculated season for the given_day
-    '''
 
 def success_rate_calculation(results: List[str], answers: List[str]) -> float:
     ''' Calculates and returns the % of correct results
     
-    results: List of results from the pinpoin_season calculations
+    results: List of results from the pinpoint_season calculations
     answers: List of correct answers from said calculations, these need to be sorted
      in the same order as the results
     return: The % of results that are the same as their corresponding desired answers
     '''
+
+
+def create_starting_centroids(num_data_types: int, k=4) -> List[List[float]]:
+    ''' Calculate starting centroids
+
+    num_data_types: The amount of data_types the centroid has
+    k: The number centroids you want to have
+    return: A list containing all created centroids
+    '''
+
+
+def calculate_centroid_location(centroids: List[List[float]], clusters: List[List[int]], dataset: List[np.ndarray]) -> List[List[float]]:
+    ''' Calculate the new mean/location of the centroid
+
+    centroids: The already existing centroids
+    clusters: The clusters corresponding to the given centroids
+    dataset: A dataset containing the trainingdata for the algorithm
+    return: The updated centroid data
+    '''
+
+
+def calculate_clusters(new_centroids: List[List[float]], old_centroids: List[List[float]], dataset: List[np.ndarray], old_clusters: List[List[int]], old_distances: List[List[int]]) -> List[List[int]]:
+    ''' Calculates cluster formations and returns them
+
+    new_centroids: A list of new centroids that need new clusters to be calculated for them
+    old_centroids: A list of old centroids that already have clusters and are necessary for comparison between old and new
+    dataset: A dataset containing the trainingdata for the algorithm
+    old_clusters: A list of old clusters that correspond to the old_centroids
+    old_distances: A list of old distances that correspond to both the old clusters and old centroids
+    return: A list containing the index of matching datapoints for each of the new_centroids
+    '''
+
     
+def calculate_centroid_diff(new_centroids: List[List[float]], old_centroids: List[List[float]]) -> List[float]:
+    ''' Calculate the difference in distance between two iterations of centroid
+    
+    new_centroids: The newly made centroids
+    old_centroids: The previous itteration of centroids
+    return: A list containing the distance between the iterations of centroids
+    '''
+            
+        
+def calculate_distance_to_centroids(given_day: np.ndarray, centroids: List[List[float]]) -> Tuple[int, float]:
+    ''' This function calculates the distance from the given day to the centroids
+
+    given_day: A list containing the data of the day you want to cluster
+    centroids: A list of centroids that need new clusters to be calculated for them
+    return: The index of the centroid and the difference between the distance to the nearest and second nearest centroids
+    '''
+
+
+def calculate_final_centroids(k: int, dataset: List[np.ndarray]) -> Tuple[List[List[float]], List[List[int]]]:
+    ''' Calculates the final centroid locations needed to process new data
+
+    k: The amount of to be used centroids/clusters
+    dataset: A dataset containing the trainingdata for the algorithm
+    return: A tuple containing a list of centroids and a list of the corresponding clusters
+    '''
+
+
+def get_centroid_seasons(clusters: List[List[int]], dataset_labels: List[str]):
+    ''' Returns the corresponding season for every cluster
+
+    clusters: The clusters that need to be analysed
+    dataset_labels: The labels for the dataset entries inside of the clusters
+    return: A list filled with the seasons, corresponding to the cluster at the same index
+    '''
+
+
+def pinpoint_season(dataset: np.ndarray, dataset_labels: List[str], given_days: List[np.ndarray], k: int) -> List[str]:
+    ''' Pinpoint the season of the given data
+    
+    dataset: A dataset containing the trainingdata for the algorithm
+    dataset_labels: The labels for the dataset entries inside of the clusters
+    given_days: A list containing the data of the day you want to cluster
+    k: The amount of to be used centroids/clusters
+    return: A list containing the seasons for each given_day
+    '''
+
+
 def calculate_optimal_k(test_days: List[np.ndarray], test_labels: List[str], original_data: List[np.ndarray], original_labels: List[np.ndarray], k_min: int, k_max: int) -> Tuple[int, float]:
     ''' Calculates the optimal k-value
-    Calculates the success rate of the calculations with all k-values between k_min and k_max and returns the best tested one together with its'
-     success rate.
 
-    test_data: Days that will be used to calculate the best k-value
-    test_labels: The correct answers for the test-data
-    original_data: The dataset that will be used for the coming calculations
-    original_labels: The corresponding labels for the dataset days
-    k_min: The minimum amount of neigbours(k) you want to test
-    k_max: The maximum amount of neighbours(k) you want to test
-    return: The best tested k-value and the associated success rate
+    test_days: A list containing all of the days that need to be assigned a season
+    test_labels: A list containing all of the corresponding seasons to the test_days, for calculating a success rate
+    original_data: A dataset containing the trainingdata for the algorithm
+    original_labels: A list containing all of the corresponding seasons to the original_data
+    k_min: The minimal k-value to be tested
+    k_max: The maximum k-value to be tested
+    return: The highest calculated succes rate and its corresponding k-value
     '''
+
 
 def main() -> None:
     # Load the data from dataset1.csv
     original_data, original_dates, original_labels = load_data()
     
     # Either load data from days.csv for testing or validation1.csv for validating the program
-    test_days = load_data("days.csv")[0]
-    # test_days, test_dates, test_labels = load_data("validation1.csv", "2001")
+    # test_days = load_data("days.csv")[0]
+    test_days, test_dates, test_labels = load_data("validation1.csv", "2001")
 
     # Normalize all data
     min, max = find_min_max(original_data)
     normalize(original_data, min, max)
     normalize(test_days, min, max)
 
-    # Predict seasons of given days
-    predicted_seasons = []
-    for day in test_days:
-        calculated_distance = calculate_distance(day, original_data, original_labels)
-        predicted_seasons.append(pinpoint_season(calculated_distance, 1))
+    # Calculate the seasons for the unknown data
+    # print(pinpoint_season(original_data, original_labels, test_days, 4))
 
-    # Print either the success rate of the validated days
-    # print(success_rate_calculation(predicted_seasons, test_labels))
-    # Or the results from the test days
-    print(predicted_seasons)
-    # Or calculate optimal k-value
-    # print(calculate_optimal_k(test_days, test_labels, original_data, original_labels, 1, 100))
+    # Calculate the optimal k-value
+    print(calculate_optimal_k(test_days, test_labels, original_data, original_labels, 0, 40))
+
 
 if __name__ == "__main__":
+    # Run time test to compare with not optimised version of function
+    start_time = time.time()
     main()
+    print("--- %s seconds ---" % (time.time() - start_time))

@@ -1,2 +1,5 @@
-The calculated seasons for the days in days.csv:
-['winter', 'winter', 'zomer', 'zomer', 'lente', 'zomer', 'winter', 'winter', 'herfst']
+The calculated seasons for the days in days.csv (both main files return the same answer):
+['winter', 'winter', 'herfst', 'zomer', 'winter', 'zomer', 'winter', 'winter', 'zomer']
+The ideal k-value is 37, with a success rate of 58% using old_main.py and 57% using main.py.
+
+The difference between main.py and old_main.py is that main.py is an time-optimised version that is much faster than old_main.py, though suffers a tiny bit in accuracy.
