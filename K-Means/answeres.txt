@@ -1,0 +1,2 @@
+The calculated seasons for the days in days.csv:
+['winter', 'winter', 'herfst', 'zomer', 'winter', 'zomer', 'winter', 'winter', 'zomer']

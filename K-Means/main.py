@@ -58,66 +58,15 @@ def normalize(dataset_to_be_changed: np.ndarray, min_values: List[int], max_valu
     min_values: A list containing the lowest values for the different data types
     max_values: A list containing the highest values for the different data types
     '''
-    #normalize the data
     for data_type in range(0, len(dataset_to_be_changed[0])):
         for day in dataset_to_be_changed:
             day[data_type] = (day[data_type] - min_values[data_type]) / (max_values[data_type] - min_values[data_type])
 
 
-def calculate_distance(given_day: np.ndarray, data: np.ndarray, labels: List[str]):
-    ''' This function calculates the distance from the to test day to it's neighbours
-
-    given_day: The day, and its' data, for which a season has to be calculated
-    data: A list of all available data about other days that are already in the system
-    labels: A list of all labels corresponding to the data entries at the same index
-    return: A list with tuples which contain the distances to the neigbours with the corresponding season
-    '''
-    distance_to_neighbour = []
-    # Loop through all days in dataset
-    for data_index in range(0, len(data)):
-        distance_neighbour = 0
-        # Loop through data type from each day and calculate the distance between selected day and given_day
-        for data_type_index in range(0, len(given_day)):
-            if given_day[data_type_index] > data[data_index][data_type_index]:
-                distance_neighbour += given_day[data_type_index] - data[data_index][data_type_index]
-            else:
-                distance_neighbour += data[data_index][data_type_index] - given_day[data_type_index]
-        distance_to_neighbour.append((distance_neighbour, labels[data_index]))
-
-    # Sort the neighbours by distance then use the top k neigbours for season calculation
-    distance_to_neighbour.sort()
-    return distance_to_neighbour
-    
-
-def pinpoint_season(distance_to_neighbour: List[Tuple[int, str]], k: int = 1) -> str:
-    ''' Calculates the most logical season for the given day
-
-    k: The amount of nearest data-points that are to be used to determine the correct season for the given_day
-    distance_to_neigbour: A list with tuples which contain the distances to the neigbours with the corresponding season
-    return: The calculated season for the given_day
-    '''
-    selected_neighbours = distance_to_neighbour[0:k]
-    season_dict = {
-        "winter": 0,
-        "herfst": 0,
-        "zomer": 0,
-        "lente": 0
-    }
-    for neighbour in selected_neighbours:
-        season_dict[neighbour[1]] += 1
-    
-    chosen_season = max(season_dict, key=season_dict.get)
-    # Check whether there are ties between the season counts in season_dict
-    for key in season_dict:
-        if key != chosen_season and season_dict[chosen_season] == season_dict[key]:
-            return pinpoint_season(selected_neighbours, k - 1)
-    return chosen_season
-
-
 def success_rate_calculation(results: List[str], answers: List[str]) -> float:
     ''' Calculates and returns the % of correct results
     
-    results: List of results from the pinpoin_season calculations
+    results: List of results from the pinpoint_season calculations
     answers: List of correct answers from said calculations, these need to be sorted
      in the same order as the results
     return: The % of results that are the same as their corresponding desired answers
@@ -131,18 +80,161 @@ def success_rate_calculation(results: List[str], answers: List[str]) -> float:
     return (correct_results / len(results)) * 100
 
 
+def create_starting_centroids(num_data_types: int, k=4) -> List[List[float]]:
+    ''' Calculate starting centroids
+
+    num_data_types: The amount of data_types the centroid has
+    k: The number centroids you want to have
+    return: A list containing all created centroids
+    '''
+    centroids = []
+    # Create k amount of centroids, with each datatype being random
+    for centroid in range(0, k):
+        new_centroid = []
+        for datapoint in range(0, num_data_types):
+            new_centroid.append(random.uniform(0, 1))
+        centroids.append(new_centroid)
+    return centroids
+
+
+def calculate_centroid_location(centroids: List[List[float]], clusters: List[List[int]], dataset: List[np.ndarray]) -> List[List[float]]:
+    ''' Calculate the new mean/location of the centroid
+
+    centroids: The already existing centroids
+    clusters: The clusters corresponding to the given centroids
+    dataset: A dataset containing the trainingdata for the algorithm
+    return: The updated centroid data
+    '''
+    new_centroids = []
+    # Loop through each centroid
+    for centroid_index in range(0, len(centroids)):
+        # Check whether centroid has its own cluster
+        if clusters[centroid_index]:
+            recalculated_centroid = []
+            # Loop through each datatype in the data_point
+            for data_index in range(0, len(dataset[0])):    
+                average = 0
+                # Calculate the average of the datatype for the centroid
+                for data_point_index in clusters[centroid_index]:   
+                    average += dataset[data_point_index][data_index]
+                average =  average / len(clusters[centroid_index])
+                recalculated_centroid.append(average)
+            new_centroids.append(recalculated_centroid)
+        # If centroid has no existing cluster, recalculation aren't necessary and add the original centroid-data
+        else:
+            new_centroids.append(centroids[centroid_index])
+    return new_centroids
+
+
+def calculate_clusters(centroids: List[List[float]], dataset: List[np.ndarray]) -> List[List[int]]:
+    ''' Calculates cluster formations and returns them
+
+    centroids: A list of centroids that need new clusters to be calculated for them
+    dataset: A dataset containing the trainingdata for the algorithm
+    return: A list containing the index of matching datapoints for each of the centroids
+    '''
+    # Create empty list of clusters 
+    # (necessary because the corresponding centroids and clusters have to be stored at the same index of their respective lists)
+    clusters = [[] for i in range(0, len(centroids))]
+    # Select for each dataset entry the closest centroid, and save a reference to said entry at the correct index of clusters
+    for dataset_index in range(0, len(dataset)):
+        closest_centroid = calculate_distance_to_centroids(dataset[dataset_index], centroids)
+        clusters[closest_centroid].append(dataset_index)
+    return clusters
+        
+        
+def calculate_distance_to_centroids(given_day: np.ndarray, centroids: List[List[float]]) -> int:
+    ''' This function calculates the distance from the given day to it's neighbours
+
+    given_day: A list containing the data of the day you want to cluster
+    centroids: A list of centroids that need new clusters to be calculated for them
+    return: the integer of the centroid
+    '''
+    distance_to_centroids = []
+    # loop through each centroid
+    for centroid in centroids:
+        distance = 0
+        # Calculate the distance between the centroid en the data to compare
+        for data_type_index in range(0, len(given_day)):
+            if given_day[data_type_index] > centroid[data_type_index]:
+                    distance += given_day[data_type_index] - centroid[data_type_index]
+            else:
+                distance += centroid[data_type_index] - given_day[data_type_index]
+        distance_to_centroids.append(distance)
+    # Return the index of the centroid with the lowest distance
+    return distance_to_centroids.index(min(distance_to_centroids))
+    
+
+def calculate_final_centroids(k: int, dataset: List[np.ndarray]) -> Tuple[List[List[float]], List[List[int]]]:
+    ''' Calculates the final centroid locations needed to process new data
+
+    k: The amount of to be used centroids/clusters
+    dataset: A dataset containing the trainingdata for the algorithm
+    return: A tuple containing a list of centroids and a list of the corresponding clusters
+    '''
+    centroids = []
+    new_centroids = create_starting_centroids(len(dataset[0]), k)
+    clusters = []
+    # As long as the data of the centroids changes, keep recalculating the centroids 
+    while centroids != new_centroids:
+        centroids = new_centroids
+        clusters = calculate_clusters(new_centroids, dataset)
+        new_centroids = calculate_centroid_location(new_centroids, clusters, dataset)
+    return new_centroids, clusters
+
+
+def get_centroid_seasons(clusters: List[List[int]], dataset_labels: List[str]):
+    ''' Returns the corresponding season for every cluster
+
+    clusters: The clusters that need to be analysed
+    dataset_labels: The labels for the dataset entries inside of the clusters
+    return: A list filled with the seasons, corresponding to the cluster at the same index
+    '''
+    seasons = []
+    for cluster_index in range(0, len(clusters)):
+        # Create a dictionary that keeps count of the counted seasons within the cluster, then select the most common one
+        season_dict = {
+            "winter": 0,
+            "herfst": 0,
+            "zomer": 0,
+            "lente": 0
+        }
+        for label_index in clusters[cluster_index]:
+            season_dict[dataset_labels[label_index]] += 1
+        seasons.append(max(season_dict, key=season_dict.get))
+    return seasons
+
+
+def pinpoint_season(dataset: np.ndarray, dataset_labels: List[str], given_days: List[np.ndarray], k: int) -> List[str]:
+    ''' Pinpoint the season of the given data
+    
+    dataset: A dataset containing the trainingdata for the algorithm
+    dataset_labels: The labels for the dataset entries inside of the clusters
+    given_days: A list containing the data of the day you want to cluster
+    k: The amount of to be used centroids/clusters
+    return: A list containing the seasons for each given_day
+    '''
+    # Calculate the starting data
+    centroids, clusters = calculate_final_centroids(k, dataset)
+    seasons = get_centroid_seasons(clusters, dataset_labels)
+    results = []
+    # Calculate for each given_day the correct season
+    for given_day in given_days:
+        closest_sentroid = calculate_distance_to_centroids(given_day, centroids)
+        results.append(seasons[closest_sentroid])
+    return results
+
+
 def calculate_optimal_k(test_days: List[np.ndarray], test_labels: List[str], original_data: List[np.ndarray], original_labels: List[np.ndarray], k_min: int, k_max: int) -> Tuple[int, float]:
     ''' Calculates the optimal k-value
-    Calculates the success rate of the calculations with all k-values between k_min and k_max and returns the best tested one together with its'
-     success rate.
 
-    test_data: Days that will be used to calculate the best k-value
-    test_labels: The correct answers for the test-data
-    original_data: The dataset that will be used for the coming calculations
-    original_labels: The corresponding labels for the dataset days
-    k_min: The minimum amount of neigbours(k) you want to test
-    k_max: The maximum amount of neighbours(k) you want to test
-    return: The best tested k-value and the associated success rate
+    test_days: A list containing all of the days that need to be assigned a season
+    test_labels: A list containing all of the corresponding seasons to the test_days, for calculating a success rate
+    original_data: A dataset containing the trainingdata for the algorithm
+    original_labels: A list containing all of the corresponding seasons to the original_data
+    k_min: The minimal k-value to be tested
+    k_max: The maximum k-value to be tested
+    return: The highest calculated succes rate and its corresponding k-value
     '''
     # Make sure that the k-value doesn't exceed the amount of available data-points
     if k_max > len(original_data):
@@ -155,10 +247,7 @@ def calculate_optimal_k(test_days: List[np.ndarray], test_labels: List[str], ori
     optimal_k_value = 0
     for k_value in range(k_min, k_max):
         print(k_value)
-        predicted_seasons = []
-        for day in test_days:
-            calculated_distances = calculate_distance(day, original_data, original_labels)
-            predicted_seasons.append(pinpoint_season(calculated_distances, k_value))
+        predicted_seasons = pinpoint_season(original_data, original_labels, test_days, k_value)
         calculated_success_rate = success_rate_calculation(predicted_seasons, test_labels)
         if calculated_success_rate > success_rate:
             success_rate = calculated_success_rate
@@ -172,26 +261,19 @@ def main() -> None:
     original_data, original_dates, original_labels = load_data()
     
     # Either load data from days.csv for testing or validation1.csv for validating the program
-    # test_days = load_data("days.csv")[0]
-    test_days, test_dates, test_labels = load_data("validation1.csv", "2001")
+    test_days = load_data("days.csv")[0]
+    # test_days, test_dates, test_labels = load_data("validation1.csv", "2001")
 
     # Normalize all data
     min, max = find_min_max(original_data)
     normalize(original_data, min, max)
     normalize(test_days, min, max)
 
-    # Predict seasons of given days
-    # predicted_seasons = []
-    # for day in test_days:
-    #     calculated_distance = calculate_distance(day, original_data, original_labels)
-    #     predicted_seasons.append(pinpoint_season(calculated_distance, 1))
+    # Calculate the seasons for the unknown data
+    print(pinpoint_season(original_data, original_labels, test_days, 4))
 
-    # Print either the success rate of the validated days
-    # print(success_rate_calculation(predicted_seasons, test_labels))
-    # Or the results from the test days
-    # print(predicted_seasons)
-    # Or calculate optimal k-value
-    print(calculate_optimal_k(test_days, test_labels, original_data, original_labels, 1, 100))
+    # Calculate the optimal k-value
+    # print(calculate_optimal_k(test_days, test_labels, original_data, original_labels, 0, 40))
 
 if __name__ == "__main__":
     main()
