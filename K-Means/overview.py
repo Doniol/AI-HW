@@ -93,12 +93,13 @@ def calculate_distance_to_centroids(given_day: np.ndarray, centroids: List[List[
     '''
 
 
-def calculate_final_centroids(k: int, dataset: List[np.ndarray]) -> Tuple[List[List[float]], List[List[int]]]:
+def calculate_final_centroids(k: int, dataset: List[np.ndarray]) -> Tuple[List[List[float]], List[List[int]], List[List[float]]]:
     ''' Calculates the final centroid locations needed to process new data
 
     k: The amount of to be used centroids/clusters
     dataset: A dataset containing the trainingdata for the algorithm
-    return: A tuple containing a list of centroids and a list of the corresponding clusters
+    return: A tuple containing a list of centroids and a list of the corresponding clusters 
+            and a list containing the distance between the centroids and the points they contain
     '''
 
 
@@ -111,14 +112,14 @@ def get_centroid_seasons(clusters: List[List[int]], dataset_labels: List[str]):
     '''
 
 
-def pinpoint_season(dataset: np.ndarray, dataset_labels: List[str], given_days: List[np.ndarray], k: int) -> List[str]:
+def pinpoint_season(dataset: np.ndarray, dataset_labels: List[str], given_days: List[np.ndarray], k: int) -> Tuple[List[str], List[List[float]]]:
     ''' Pinpoint the season of the given data
     
     dataset: A dataset containing the trainingdata for the algorithm
     dataset_labels: The labels for the dataset entries inside of the clusters
     given_days: A list containing the data of the day you want to cluster
     k: The amount of to be used centroids/clusters
-    return: A list containing the seasons for each given_day
+    return: A tuple containing a list with the seasons for each given_day and a list with all of the distances between centroid and the points it contains
     '''
 
 
@@ -132,6 +133,23 @@ def calculate_optimal_k(test_days: List[np.ndarray], test_labels: List[str], ori
     k_min: The minimal k-value to be tested
     k_max: The maximum k-value to be tested
     return: The highest calculated succes rate and its corresponding k-value
+    '''
+
+
+def inter_cluster_distance(distances: List[List[float]]) -> float:
+    ''' This function calculates the total distance of the point in the clusters
+
+    distances: A list for each of the centroids with the distance between the centroid and the points it contains
+    return: The calculated total distance
+    '''
+
+
+def plot_k(total_inter_cluster_distances: List[float], k_min: int, k_max: int):
+    ''' A function for plotting the k-values against the total intercluster distances
+
+    total_inter_cluster_distances: A list filled with the total intercluster distance for each cluster
+    k_min: The lowest tested k-value
+    k_max: The highest tested k-value
     '''
 
 

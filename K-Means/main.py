@@ -4,6 +4,7 @@ import math
 import random
 import copy
 import time
+from matplotlib import pyplot as plt  
 
 random.seed(0)
 
@@ -213,12 +214,13 @@ def calculate_distance_to_centroids(given_day: np.ndarray, centroids: List[List[
     return distance_to_centroids.index(distance_temp[0]), distance_temp[1] - distance_temp[0]
     
 
-def calculate_final_centroids(k: int, dataset: List[np.ndarray]) -> Tuple[List[List[float]], List[List[int]]]:
+def calculate_final_centroids(k: int, dataset: List[np.ndarray]) -> Tuple[List[List[float]], List[List[int]], List[List[float]]]:
     ''' Calculates the final centroid locations needed to process new data
 
     k: The amount of to be used centroids/clusters
     dataset: A dataset containing the trainingdata for the algorithm
-    return: A tuple containing a list of centroids and a list of the corresponding clusters
+    return: A tuple containing a list of centroids and a list of the corresponding clusters 
+            and a list containing the distance between the centroids and the points they contain
     '''
     centroids = []
     new_centroids = create_starting_centroids(len(dataset[0]), k)
@@ -229,7 +231,7 @@ def calculate_final_centroids(k: int, dataset: List[np.ndarray]) -> Tuple[List[L
         clusters, distances = calculate_clusters(new_centroids, centroids, dataset, clusters, distances)
         centroids = new_centroids
         new_centroids = calculate_centroid_location(new_centroids, clusters, dataset)
-    return new_centroids, clusters
+    return new_centroids, clusters, distances
 
 
 def get_centroid_seasons(clusters: List[List[int]], dataset_labels: List[str]):
@@ -254,28 +256,28 @@ def get_centroid_seasons(clusters: List[List[int]], dataset_labels: List[str]):
     return seasons
 
 
-def pinpoint_season(dataset: np.ndarray, dataset_labels: List[str], given_days: List[np.ndarray], k: int) -> List[str]:
+def pinpoint_season(dataset: np.ndarray, dataset_labels: List[str], given_days: List[np.ndarray], k: int) -> Tuple[List[str], List[List[float]]]:
     ''' Pinpoint the season of the given data
     
     dataset: A dataset containing the trainingdata for the algorithm
     dataset_labels: The labels for the dataset entries inside of the clusters
     given_days: A list containing the data of the day you want to cluster
     k: The amount of to be used centroids/clusters
-    return: A list containing the seasons for each given_day
+    return: A tuple containing a list with the seasons for each given_day and a list with all of the distances between centroid and the points it contains
     '''
     # Calculate the starting data
-    centroids, clusters = calculate_final_centroids(k, dataset)
+    centroids, clusters, distances = calculate_final_centroids(k, dataset)
     seasons = get_centroid_seasons(clusters, dataset_labels)
     results = []
     # Calculate for each given_day the correct season
     for given_day in given_days:
         closest_sentroid = calculate_distance_to_centroids(given_day, centroids)[0]
         results.append(seasons[closest_sentroid])
-    return results
+    return results, distances
 
 
 def calculate_optimal_k(test_days: List[np.ndarray], test_labels: List[str], original_data: List[np.ndarray], original_labels: List[np.ndarray], k_min: int, k_max: int) -> Tuple[int, float]:
-    ''' Calculates the optimal k-value
+    ''' Calculates the optimal k-value, times how long it takes and finally plots it aswell
 
     test_days: A list containing all of the days that need to be assigned a season
     test_labels: A list containing all of the corresponding seasons to the test_days, for calculating a success rate
@@ -290,19 +292,53 @@ def calculate_optimal_k(test_days: List[np.ndarray], test_labels: List[str], ori
         k_max = original_data
     if k_min < 1:
         k_min = 2
+        
+    # Run time test to compare with not optimised version of function
+    start_time = time.time()
 
     # Calculate the success rate for each k-value and return the best one
     success_rate = 0
     optimal_k_value = 0
+    k_cluster_distance = []
     for k_value in range(k_min, k_max):
         print(k_value)
-        predicted_seasons = pinpoint_season(original_data, original_labels, test_days, k_value)
+        predicted_seasons, distances = pinpoint_season(original_data, original_labels, test_days, k_value)
+        k_cluster_distance.append(inter_cluster_distance(distances))
         calculated_success_rate = success_rate_calculation(predicted_seasons, test_labels)
         if calculated_success_rate > success_rate:
             success_rate = calculated_success_rate
             optimal_k_value = k_value
+
+    print("--- %s seconds ---" % (time.time() - start_time))
+    print(optimal_k_value, success_rate)
     
-    return optimal_k_value, success_rate
+    plot_k(k_cluster_distance, k_min, k_max)
+
+
+def inter_cluster_distance(distances: List[List[float]]) -> float:
+    ''' This function calculates the total distance of the point in the clusters
+
+    distances: A list for each of the centroids with the distance between the centroid and the points it contains
+    return: The calculated total distance
+    '''
+    distance = 0
+    for cluster in distances:
+        distance += sum(cluster)
+    return distance
+
+def plot_k(total_inter_cluster_distances: List[float], k_min: int, k_max: int):
+    ''' A function for plotting the k-values against the total intercluster distances
+
+    total_inter_cluster_distances: A list filled with the total intercluster distance for each cluster
+    k_min: The lowest tested k-value
+    k_max: The highest tested k-value
+    '''
+    x = np.arange(k_min, k_max)
+    plt.title("Matplotlib demo")
+    plt.xlabel("k-value")
+    plt.ylabel("Total inter cluster distance")
+    plt.plot(x, total_inter_cluster_distances)
+    plt.show()
 
 
 def main() -> None:
@@ -310,8 +346,8 @@ def main() -> None:
     original_data, original_dates, original_labels = load_data()
     
     # Either load data from days.csv for testing or validation1.csv for validating the program
-    test_days = load_data("days.csv")[0]
-    # test_days, test_dates, test_labels = load_data("validation1.csv", "2001")
+    # test_days = load_data("days.csv")[0]
+    test_days, test_dates, test_labels = load_data("validation1.csv", "2001")
 
     # Normalize all data
     min, max = find_min_max(original_data)
@@ -319,14 +355,11 @@ def main() -> None:
     normalize(test_days, min, max)
 
     # Calculate the seasons for the unknown data
-    print(pinpoint_season(original_data, original_labels, test_days, 4))
+    # print(pinpoint_season(original_data, original_labels, test_days, 4))
 
     # Calculate the optimal k-value
-    # print(calculate_optimal_k(test_days, test_labels, original_data, original_labels, 0, 40))
+    calculate_optimal_k(test_days, test_labels, original_data, original_labels, 0, 100)
 
 
 if __name__ == "__main__":
-    # Run time test to compare with not optimised version of function
-    start_time = time.time()
     main()
-    print("--- %s seconds ---" % (time.time() - start_time))
