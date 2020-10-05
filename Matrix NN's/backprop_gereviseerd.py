@@ -72,13 +72,14 @@ def backprop(inputs, outputs, weights, function=sigmoid, derivative=derivative_s
         if layer == layers:
             # it is the output layer.
             print("HERE")
-            print(derivative(a_now), outputs, a_now)
             delta = np.array(derivative(a_now) * (outputs - a_now)).T  # calculate error on output
         else:
             delta = derivative(a_now) * weights[layer][:,1:].T.dot(delta) # calculate error on current layer (that rule needs to work with the weights excluding the biases only. therefore, discard the first column with bias-weights.
             
         thetaUpdate = eta * np.outer(delta,np.append(1, a_prev)) # calculate adjustments to weights
         print("NOW HERE")
+        print(delta,np.append(1, a_prev))
+        print(np.outer(delta,np.append(1, a_prev)))
         print(weights, layer)
         print(thetaUpdate)
         updates.insert(0, thetaUpdate) # store adjustments
@@ -116,7 +117,6 @@ def main():
     weights_1 = np.array(get_random_weights(2, len(training_data[0]) + 1))
     weights_2 = np.array(get_random_weights(1, len(training_data[0]) + 1))
     weights = [weights_1, weights_2]
-    print(weights)
     iterations = 400
 
     # for i in range(0, iterations):

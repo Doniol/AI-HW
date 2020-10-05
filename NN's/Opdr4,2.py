@@ -95,12 +95,12 @@ class ADDER:
 
 
 def main():
-    input_1 = 1
+    input_1 = 0
     input_2 = 1
     input_carry = 1
     
-    test = ADDER()
-    test.set_input([input_1, input_2], input_carry)
+    test = XOR_gate()
+    test.set_input([input_1, input_2])
     print(test.get_output())
 
 
