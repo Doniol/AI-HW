@@ -192,7 +192,7 @@ class population:
             new_gen.append(new_individual)
         self.individuals = new_gen
 
-    def run(self, runs=1000, pool_size=8)-> Individual:
+    def run(self, runs=100, pool_size=8)-> Individual:
         ''' This function runs the evolution algorithm
         This function creates as many generation as there are runs declared using the evolution algorithm
 
@@ -213,10 +213,15 @@ class population:
 
 
 def main():
-    evolve_card = population(100)
-    best = evolve_card.run()
-    print()
-    print(best.fitness)
-    print("sum_deck: " + str(best.deck_sum))
+    for i in range(100, 2000, 100):
+        avg = 0
+        for j in range(0, 100):
+            evolve_card = population(250)
+            best = evolve_card.run(runs=i)
+            avg += best.fitness
+        print(i, avg/100)
+    # print()
+    # print(best.fitness)
+    # print("sum_deck: " + str(best.deck_sum))
 
 main()
