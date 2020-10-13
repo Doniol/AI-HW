@@ -156,7 +156,7 @@ def main():
     tanh_vectorized_twice = np.vectorize(tanh_vectorized)
     print(calc_parallel_a_test(inputs_parallel, [weights_1, weights_2], tanh_vectorized_twice))
 
-    # Test part 4: 
+    # Test part 4: Backwards Propagation
 
 
 main()

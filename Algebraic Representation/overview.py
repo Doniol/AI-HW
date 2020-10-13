@@ -6,9 +6,10 @@ from tensorflow.keras import layers
 
 def main():
     inputs = keras.Input(shape=(784))
+    img_inputs = keras.Input(shape=(28, 28, 3))
     dense = layers.Dense(28, activation="relu")
     x = dense(inputs)
-    x = layers.Dense(14, activation="relu")(x)
+    # x = layers.Dense(14, activation="relu")(x)
     outputs = layers.Dense(10)(x)
     model = keras.Model(inputs=inputs, outputs=outputs, name="mnist_model")
 
@@ -22,11 +23,8 @@ def main():
         metrics=["accuracy"],
     )
 
-    model.fit(x_train, y_train, batch_size=64, epochs=400, validation_split=0.2)
+    history = model.fit(x_train, y_train, batch_size=64, epochs=400, validation_split=0.2)
 
     test_scores = model.evaluate(x_test, y_test, verbose=2)
     print("Test loss:", test_scores[0])
     print("Test accuracy:", test_scores[1])
-
-if __name__ == "__main__":
-    main()
